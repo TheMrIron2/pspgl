@@ -60,7 +60,11 @@ void __pspgl_dlist_init(void)
 						      sizeof(d->_cmdbuf));
 		dlist_reset(d);
 	}
-	PSPGL_PROFILE_SET(command_list_capacity_words, DLIST_SIZE);
+}
+
+unsigned __pspgl_dlist_capacity_words(void)
+{
+	return DLIST_SIZE;
 }
 
 void __pspgl_dlist_enqueue_cmd (unsigned long cmd)

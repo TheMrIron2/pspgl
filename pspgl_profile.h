@@ -41,10 +41,12 @@ struct pspgl_profile_stats {
 
 	unsigned long long render_setup_calls;
 	unsigned long long render_prim_calls;
-	unsigned long long ge_registers_scanned;
+	unsigned long long ge_register_groups_considered;
+	unsigned long long ge_register_groups_nonempty;
+	unsigned long long ge_register_bit_iterations;
 	unsigned long long ge_dirty_registers;
 	unsigned long long ge_registers_emitted;
-	unsigned long long ge_registers_skipped;
+	unsigned long long ge_dirty_registers_not_emitted;
 	unsigned long long ge_uncached_register_writes;
 	unsigned long long matrix_uploads;
 	unsigned long long matrix_words;

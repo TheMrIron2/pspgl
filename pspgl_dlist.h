@@ -7,6 +7,8 @@
 /* Initialize the dlist subsystem */
 extern void __pspgl_dlist_init(void);
 
+unsigned __pspgl_dlist_capacity_words(void);
+
 /* flush pending buffers to hardware, and return asynchronously. */
 extern void __pspgl_dlist_submit (void);
 

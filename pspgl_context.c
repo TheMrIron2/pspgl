@@ -48,30 +48,35 @@ void __pspgl_context_flush_pending_state_changes (struct pspgl_context *c,
 {
 	first = first & ~31;
 	last = (last + 31 + 1) & ~31;
-	PSPGL_PROFILE_ADD(ge_registers_scanned, last - first);
 
-	for(unsigned i = first; i < last; i += 32) {
-		uint32_t word = c->hw.ge_reg_touched[i/32];
-		unsigned j;
-		unsigned emitted = 0;
+for (unsigned i = first; i < last; i += 32) {
+	uint32_t word = c->hw.ge_reg_touched[i / 32];
+	unsigned j;
 
-		c->hw.ge_reg_touched[i/32] = 0;
+	PSPGL_PROFILE_INC(ge_register_groups_considered);
+	if (word != 0)
+		PSPGL_PROFILE_INC(ge_register_groups_nonempty);
 
-		if (word && 0)
-			psp_log("setting i %d word %08x\n",
-				i, word);
+	c->hw.ge_reg_touched[i / 32] = 0;
 
-		for(j = i; word != 0; j++, word >>= 1) {
+	if (word && 0)
+		psp_log("setting i %d word %08x\n", i, word);
+
+		for (j = i; word != 0; j++, word >>= 1) {
+			PSPGL_PROFILE_INC(ge_register_bit_iterations);
+
 			if (word & 1) {
 				PSPGL_PROFILE_INC(ge_dirty_registers);
+
 				if ((c->hw.ge_reg[j] >> 24) == j) {
 					PSPGL_PROFILE_INC(ge_registers_emitted);
-					emitted++;
 					__pspgl_dlist_enqueue_cmd(c->hw.ge_reg[j]);
+				} else {
+					PSPGL_PROFILE_INC(
+						ge_dirty_registers_not_emitted);
 				}
 			}
 		}
-		PSPGL_PROFILE_ADD(ge_registers_skipped, 32 - emitted);
 	}
 }
 
