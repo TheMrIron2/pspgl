@@ -2,6 +2,7 @@
 #include "pspgl_texobj.h"
 #include "pspgl_dlist.h"
 #include "pspgl_matrix.h"
+#include "pspgl_profile_internal.h"
 
 /**
  *  cached register write, save value and mark as touched...
@@ -10,6 +11,11 @@ void __pspgl_context_writereg (struct pspgl_context *c, uint32_t cmd,
 			       uint32_t argi) 
 {
 	uint32_t new = (cmd << 24) | (argi & 0xffffff);
+
+	if (cmd == CMD_TEXCACHE_FLUSH)
+		PSPGL_PROFILE_INC(texture_cache_flush_requests);
+	else if (cmd == CMD_TEXCACHE_SYNC)
+		PSPGL_PROFILE_INC(texture_cache_sync_requests);
 
 	if (new != c->hw.ge_reg[cmd]) {
 		c->hw.ge_reg[cmd] = new;
@@ -21,6 +27,11 @@ void __pspgl_context_writereg_masked (struct pspgl_context *c, uint32_t cmd,
 				      uint32_t argi, uint32_t mask)
 {
 	uint32_t new = (cmd << 24) | (c->hw.ge_reg[cmd] & ~mask) | (argi & mask & 0xffffff);
+
+	if (cmd == CMD_TEXCACHE_FLUSH)
+		PSPGL_PROFILE_INC(texture_cache_flush_requests);
+	else if (cmd == CMD_TEXCACHE_SYNC)
+		PSPGL_PROFILE_INC(texture_cache_sync_requests);
 
 	if (new != c->hw.ge_reg[cmd]) {
 		c->hw.ge_reg[cmd] = new;
@@ -37,10 +48,12 @@ void __pspgl_context_flush_pending_state_changes (struct pspgl_context *c,
 {
 	first = first & ~31;
 	last = (last + 31 + 1) & ~31;
+	PSPGL_PROFILE_ADD(ge_registers_scanned, last - first);
 
 	for(unsigned i = first; i < last; i += 32) {
 		uint32_t word = c->hw.ge_reg_touched[i/32];
 		unsigned j;
+		unsigned emitted = 0;
 
 		c->hw.ge_reg_touched[i/32] = 0;
 
@@ -49,9 +62,16 @@ void __pspgl_context_flush_pending_state_changes (struct pspgl_context *c,
 				i, word);
 
 		for(j = i; word != 0; j++, word >>= 1) {
-			if ((word & 1) && (c->hw.ge_reg[j] >> 24) == j)
-				__pspgl_dlist_enqueue_cmd(c->hw.ge_reg[j]);
+			if (word & 1) {
+				PSPGL_PROFILE_INC(ge_dirty_registers);
+				if ((c->hw.ge_reg[j] >> 24) == j) {
+					PSPGL_PROFILE_INC(ge_registers_emitted);
+					emitted++;
+					__pspgl_dlist_enqueue_cmd(c->hw.ge_reg[j]);
+				}
+			}
 		}
+		PSPGL_PROFILE_ADD(ge_registers_skipped, 32 - emitted);
 	}
 }
 
@@ -62,6 +82,12 @@ void __pspgl_context_flush_pending_state_changes (struct pspgl_context *c,
 void __pspgl_context_writereg_uncached (struct pspgl_context *c, uint32_t cmd, uint32_t argi) 
 {
 	uint32_t val = ((cmd) << 24) | ((argi) & 0xffffff);
+
+	PSPGL_PROFILE_INC(ge_uncached_register_writes);
+	if (cmd == CMD_TEXCACHE_FLUSH)
+		PSPGL_PROFILE_INC(texture_cache_flush_requests);
+	else if (cmd == CMD_TEXCACHE_SYNC)
+		PSPGL_PROFILE_INC(texture_cache_sync_requests);
 
 	c->hw.ge_reg[cmd] = val;	/* still need to record value */
 	c->hw.ge_reg_touched[cmd/32] &= ~(1 << (cmd % 32)); /* not dirty */
@@ -160,6 +186,8 @@ static void flush_matrix(struct pspgl_context *c, unsigned opcode, int index,
 
 	int n = (skip == -1) ? 4 : 3;
 
+	PSPGL_PROFILE_INC(matrix_uploads);
+	PSPGL_PROFILE_ADD(matrix_words, 1 + n * 4);
 	__pspgl_context_writereg_uncached(c, opcode, index * n * 4);
 	opcode++;
 	for (int j=0; j<4; j++)
@@ -222,6 +250,7 @@ void __pspgl_context_render_setup(struct pspgl_context *c, unsigned vtxfmt,
 	struct pspgl_texobj *tobj;
 	int clut_load = 0;
 
+	PSPGL_PROFILE_INC(render_setup_calls);
 	tobj = c->texture.bound;	
 
 	/* Set up cmap state; if the texture format has an inherent
@@ -341,6 +370,7 @@ void __pspgl_context_render_prim(struct pspgl_context *c,
 				 unsigned prim, unsigned count, unsigned vtxfmt,
 				 const void *vertex, const void *index)
 {
+	PSPGL_PROFILE_INC(render_prim_calls);
 	__pspgl_context_render_setup(c, vtxfmt, vertex, index);
 
 	__pspgl_context_writereg_uncached(c, CMD_PRIM, (prim << 16) | count);

@@ -1,6 +1,7 @@
 #include <string.h>
 #include "pspgl_internal.h"
 #include "pspgl_texobj.h"
+#include "pspgl_profile_internal.h"
 
 void glBindTexture(GLenum target, GLuint id)
 {
@@ -9,6 +10,7 @@ void glBindTexture(GLenum target, GLuint id)
 	unsigned i;
 	GLenum error;
 
+	PSPGL_PROFILE_INC(texture_bind_calls);
 	bound = pspgl_curctx->texture.bound;
 	tobj = __pspgl_hash_lookup(hash, id);
 
@@ -29,11 +31,15 @@ void glBindTexture(GLenum target, GLuint id)
 			goto out_error;
 
 		__pspgl_hash_insert(hash, id, tobj);
+		PSPGL_PROFILE_INC(texture_objects_created);
 	}
 
-	if (bound == tobj)
+	if (bound == tobj) {
+		PSPGL_PROFILE_INC(texture_bind_redundant);
 		return;
+	}
 
+	PSPGL_PROFILE_INC(texture_bind_changes);
 	if (bound != NULL) {
 		int i;
 

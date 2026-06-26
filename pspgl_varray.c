@@ -2,6 +2,7 @@
 
 #include "pspgl_internal.h"
 #include "pspgl_buffers.h"
+#include "pspgl_profile_internal.h"
 
 unsigned __pspgl_gl_sizeof(GLenum type)
 {
@@ -348,9 +349,13 @@ int __pspgl_gen_varray(const struct vertex_format *vfmt, int first, int count,
 	unsigned char *dest = to;
 	int nvtx = space / vfmt->vertex_size;
 	void *ptrs[MAX_ATTRIB];
+	int any_client_memory = 0;
 
 	if (nvtx > count)
 		nvtx = count;
+	for(int i = 0; i < vfmt->nattrib; i++)
+		if (vfmt->attribs[i].array->buffer == NULL)
+			any_client_memory = 1;
 
 	/* Check to see if the user was kind enough to supply the
 	   arrays in hardware format. */
@@ -359,6 +364,12 @@ int __pspgl_gen_varray(const struct vertex_format *vfmt, int first, int count,
 		void *from;
 
 		psp_log("arrays in native layout\n");
+		PSPGL_PROFILE_INC(native_vertex_array_copies);
+		PSPGL_PROFILE_ADD(native_vertex_array_vertices, nvtx);
+		if (any_client_memory)
+			PSPGL_PROFILE_INC(client_memory_draw_paths);
+		else
+			PSPGL_PROFILE_INC(buffer_object_draw_paths);
 
 		va = vfmt->attribs[0].array;
 
@@ -373,6 +384,12 @@ int __pspgl_gen_varray(const struct vertex_format *vfmt, int first, int count,
 	}
 
 	psp_log("converting arrays\n");
+	PSPGL_PROFILE_INC(converted_vertex_array_copies);
+	PSPGL_PROFILE_ADD(converted_vertex_array_vertices, nvtx);
+	if (any_client_memory)
+		PSPGL_PROFILE_INC(client_memory_draw_paths);
+	else
+		PSPGL_PROFILE_INC(buffer_object_draw_paths);
 	for(int i = 0; i < vfmt->nattrib; i++) {
 		struct pspgl_vertex_array *a = vfmt->attribs[i].array;
 
@@ -582,17 +599,20 @@ struct pspgl_buffer *__pspgl_varray_convert_indices(GLenum idxtype, const void *
 			if (idxtype == GL_UNSIGNED_BYTE)
 				*hwformat |= GE_VINDEX_8BIT;
 			else
-				*hwformat |= GE_VINDEX_16BIT;
+			*hwformat |= GE_VINDEX_16BIT;
 
 			*buffer_offset = indices - NULL;
 			ret = idxbuf->data;
 			ret->refcount++;
+			PSPGL_PROFILE_INC(index_buffer_direct_paths);
 		}
 	}
 
 	if (ret == NULL) {
 		/* Index buffer object, but not in hardware format,
 		   or no index buffer object */
+		PSPGL_PROFILE_INC(index_convert_paths);
+		PSPGL_PROFILE_INC(index_buffer_temp_allocations);
 		ret = __pspgl_buffer_new(idx_sizeof(idxtype) * count, 
 					 GL_STREAM_DRAW_ARB);
 		if (unlikely(ret == NULL))

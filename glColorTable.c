@@ -1,5 +1,6 @@
 #include "pspgl_internal.h"
 #include "pspgl_texobj.h"
+#include "pspgl_profile_internal.h"
 
 void glColorTable(GLenum target, GLenum internalformat, 
 		  GLsizei width, GLenum format, GLenum type, const GLvoid *data)
@@ -42,6 +43,9 @@ void glColorTable(GLenum target, GLenum internalformat,
 		__pspgl_teximg_free(tobj->cmap);
 	}
 	tobj->cmap = cmap;
+	PSPGL_PROFILE_INC(texture_color_table_uploads);
+	PSPGL_PROFILE_INC(texture_memory_modifications);
+	PSPGL_PROFILE_ADD(texture_upload_bytes, width * fmt->hwsize);
 	pspgl_curctx->hw.dirty |= HWD_CLUT;
 
 	__pspgl_update_texenv(tobj);

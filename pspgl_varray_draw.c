@@ -1,6 +1,7 @@
 #include "pspgl_internal.h"
 #include "pspgl_buffers.h"
 #include "pspgl_dlist.h"
+#include "pspgl_profile_internal.h"
 
 void __pspgl_varray_draw(GLenum mode, GLint first, GLsizei count)
 {
@@ -16,9 +17,13 @@ void __pspgl_varray_draw(GLenum mode, GLint first, GLsizei count)
 	if (unlikely(prim < 0))
 		goto out_error;
 
-	if (unlikely(count == 0))
+	if (unlikely(count == 0)) {
+		PSPGL_PROFILE_INC(draw_zero_count_skips);
 		return;
+	}
 
+	PSPGL_PROFILE_INC(draw_calls);
+	PSPGL_PROFILE_ADD(vertices_submitted, count);
 	vbuf = NULL;
 	vbuf_offset = 0;
 	vfmtp = &vfmt;
@@ -29,6 +34,7 @@ void __pspgl_varray_draw(GLenum mode, GLint first, GLsizei count)
 		/* FAST: draw from locked array */
 		struct locked_arrays *l = &pspgl_curctx->vertex_array.locked;
 
+		PSPGL_PROFILE_INC(array_locked_fast_paths);
 		psp_log("yep, cached\n");
 		vbuf = l->cached_array;
 		vbuf_offset = l->cached_array_offset;
@@ -48,6 +54,8 @@ void __pspgl_varray_draw(GLenum mode, GLint first, GLsizei count)
 
 		psp_log("converting %d vertices at %d\n", count, first);
 
+		PSPGL_PROFILE_INC(array_convert_paths);
+		PSPGL_PROFILE_INC(vertex_buffer_temp_allocations);
 		vbuf = __pspgl_varray_convert(&vfmt, first, count);
 		vbuf_offset = 0;
 
@@ -84,4 +92,3 @@ void __pspgl_varray_draw(GLenum mode, GLint first, GLsizei count)
   out_error:
 	GLERROR(error);
 }
-

@@ -6,10 +6,12 @@ CC = $(ARCH)gcc -std=gnu99
 AR = $(ARCH)ar
 RANLIB = $(ARCH)ranlib
 RM = rm -f
-CFLAGS = -g -Wall -Wmissing-prototypes -Os -G0 -fsingle-precision-constant -I. -I $(PSPPATH)/include -I $(PSPSDK)/include
+PSPGL_PROFILE ?= 0
+CFLAGS = -g -Wall -Wmissing-prototypes -Os -G0 -fsingle-precision-constant -DPSPGL_PROFILE=$(PSPGL_PROFILE) -I. -I $(PSPPATH)/include -I $(PSPSDK)/include
 LFLAGS = -g -Wall -Os -G0 -L$(PSPPATH)/lib
 
 DEPDIR = .deps
+PSPGL_PROFILE_STAMP = $(DEPDIR)/profile-$(PSPGL_PROFILE).stamp
 
 API_OBJS = \
 	eglBindTexImage.o \
@@ -141,6 +143,7 @@ API_OBJS = \
 	pspgl_hash.o \
 	pspgl_matrix.o \
 	pspgl_misc.o \
+	pspgl_profile.o \
 	pspgl_stats.o \
 	pspgl_texobj.o \
 	pspgl_varray.o \
@@ -178,7 +181,7 @@ all: $(DEPDIR) $(libGL.a_OBJS) $(libGLU.a_OBJS) $(libglut.a_OBJS) libGL.a libGLU
 	$(AR) cru $@ $($@_OBJS)
 	$(RANLIB) $@
 	@$(ARCH)nm -o -fp -g --defined-only $@ | \
-		awk '$$2~/^(gl|egl|glut|__pspgl)/ { next } \
+		awk '$$2~/^(gl|egl|glut|pspgl_profile|__pspgl)/ { next } \
 				{ if (!bad) print "Bad symbols:"; print "\t", $$1, $$2; bad++ } \
 			END	{ if (bad) { \
 					print bad," bad symbol(s)"; exit(1) \
@@ -199,6 +202,12 @@ pspgl_proctable.h: $(API_OBJS) Makefile
 
 $(DEPDIR):
 	mkdir $(DEPDIR)
+
+$(libGL.a_OBJS) $(libGLU.a_OBJS) $(libglut.a_OBJS): $(PSPGL_PROFILE_STAMP)
+
+$(PSPGL_PROFILE_STAMP): | $(DEPDIR)
+	$(RM) $(DEPDIR)/profile-*.stamp
+	echo "$(PSPGL_PROFILE)" > $@
 
 .c.o:
 	$(CC) $(CFLAGS) -MD -MF $(DEPDIR)/$*.d -c $<
@@ -226,4 +235,3 @@ install: all
 	cp libglut.a $(PSPPATH)/lib
 
 -include $(wildcard $(DEPDIR)/*.d) dummy
-

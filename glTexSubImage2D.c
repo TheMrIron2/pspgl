@@ -3,6 +3,7 @@
 
 #include "pspgl_internal.h"
 #include "pspgl_texobj.h"
+#include "pspgl_profile_internal.h"
 
 static void convert_subimage(struct pspgl_teximg * restrict img,
 			     void * restrict to,
@@ -137,6 +138,9 @@ void glTexSubImage2D( GLenum target, GLint level,
 		convert_subimage(timg, p, pixels, xoffset, yoffset, width, height);
 
 	__pspgl_buffer_unmap(timg->image, GL_WRITE_ONLY_ARB);
+	PSPGL_PROFILE_INC(texture_sub_image_uploads);
+	PSPGL_PROFILE_INC(texture_memory_modifications);
+	PSPGL_PROFILE_ADD(texture_upload_bytes, width * height * texfmt->hwsize);
 
 	if (level == 0 && (tobj->flags & TOF_GENERATE_MIPMAPS))
 		__pspgl_update_mipmaps();

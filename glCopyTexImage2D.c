@@ -4,6 +4,7 @@
 #include "pspgl_internal.h"
 #include "pspgl_texobj.h"
 #include "pspgl_dlist.h"
+#include "pspgl_profile_internal.h"
 
 static const struct {
 	GLenum format, type;
@@ -81,6 +82,9 @@ void glCopyTexImage2D(GLenum target,
 	__pspgl_copy_pixels(framebuffer->base, read->pixelperline, x, y,
 			    timg->image->base + timg->offset, timg->width, dest_x, dest_y,
 			    width, height, read->pixfmt);
+	PSPGL_PROFILE_INC(texture_copy_image_uploads);
+	PSPGL_PROFILE_INC(texture_memory_modifications);
+	PSPGL_PROFILE_ADD(texture_upload_bytes, width * height * timg->texfmt->hwsize);
 
 	__pspgl_dlist_pin_buffer(timg->image, BF_PINNED_WR);
 	__pspgl_dlist_pin_buffer(framebuffer, BF_PINNED_RD);

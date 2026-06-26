@@ -4,6 +4,7 @@
 #include "pspgl_internal.h"
 #include "pspgl_texobj.h"
 #include "pspgl_dlist.h"
+#include "pspgl_profile_internal.h"
 
 static unsigned max_mipmap(unsigned width, unsigned height)
 {
@@ -60,6 +61,7 @@ void __pspgl_update_mipmaps(void)
 	    tobj->texfmt->hwformat > GE_RGBA_8888)
 		return;
 
+	PSPGL_PROFILE_INC(texture_mipmap_updates);
 	__pspgl_texobj_unswizzle(tobj);
 
 	timg = tobj->images[0];
@@ -427,6 +429,9 @@ void glTexImage2D (GLenum target, GLint level, GLint internalformat,
 		return;		/* error already set */
 
 	__pspgl_set_texture_image(tobj, level, timg);
+	PSPGL_PROFILE_INC(texture_image_uploads);
+	PSPGL_PROFILE_INC(texture_memory_modifications);
+	PSPGL_PROFILE_ADD(texture_upload_bytes, width * height * texfmt->hwsize);
 
 	if (__pspgl_texobj_cmap(tobj) != NULL)
 		pspgl_curctx->hw.dirty |= HWD_CLUT;

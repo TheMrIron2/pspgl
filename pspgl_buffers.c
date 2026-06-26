@@ -7,6 +7,7 @@
 #include "pspgl_internal.h"
 #include "pspgl_buffers.h"
 #include "pspgl_dlist.h"
+#include "pspgl_profile_internal.h"
 
 static int list_pin;		/* if != 0, prevent buffer list rearrangements */
 
@@ -302,6 +303,7 @@ void __pspgl_buffer_free(struct pspgl_buffer *data)
 
 void __pspgl_buffer_want_vidmem(struct pspgl_buffer *buf)
 {
+	PSPGL_PROFILE_INC(buffer_vidmem_wants);
 	/* Move buffer away from eviction end of the list */
 	if (!list_pin) {
 		buffer_remove(buf);
@@ -423,9 +425,11 @@ static int buffer_synced(void *p)
    freed. */
 void __pspgl_buffer_dlist_sync(struct pspgl_buffer *data)
 {
+	PSPGL_PROFILE_INC(buffer_dlist_syncs);
 	data->refcount++;	/* prevent freeing */
 
 	if (data->flags & BF_PINNED) {
+		PSPGL_PROFILE_INC(buffer_dlist_sync_waits);
 		__pspgl_dlist_submit();
 		__pspgl_dlist_await_completion(buffer_synced, data);
 	}

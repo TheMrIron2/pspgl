@@ -8,6 +8,7 @@
 #include "pspgl_internal.h"
 #include "pspgl_buffers.h"
 #include "pspgl_dlist.h"
+#include "pspgl_profile_internal.h"
 
 #define NUM_CMDLISTS	16u
 
@@ -59,6 +60,7 @@ void __pspgl_dlist_init(void)
 						      sizeof(d->_cmdbuf));
 		dlist_reset(d);
 	}
+	PSPGL_PROFILE_SET(command_list_capacity_words, DLIST_SIZE);
 }
 
 void __pspgl_dlist_enqueue_cmd (unsigned long cmd)
@@ -66,10 +68,17 @@ void __pspgl_dlist_enqueue_cmd (unsigned long cmd)
 	struct pspgl_dlist *d = &dlists[dlist_current];
 
 	if (unlikely((d->len + 1) >= (DLIST_SIZE - DLIST_EXTRA))) {
+		PSPGL_PROFILE_INC(command_list_rollovers);
 		__pspgl_dlist_submit();
 		d = &dlists[dlist_current];
 	}
 	d->cmd_buf[d->len++] = cmd;
+	PSPGL_PROFILE_INC(command_words);
+	if ((cmd >> 24) == CMD_TEXCACHE_FLUSH)
+		PSPGL_PROFILE_INC(texture_cache_flush_commands);
+	else if ((cmd >> 24) == CMD_TEXCACHE_SYNC)
+		PSPGL_PROFILE_INC(texture_cache_sync_commands);
+	PSPGL_PROFILE_MAX(command_list_high_water_words, d->len);
 }
 
 
@@ -82,6 +91,8 @@ static void sync_list(struct pspgl_dlist *list)
 
 	if (list->qid == -1)
 		return;
+
+	PSPGL_PROFILE_INC(queue_waits);
 
 	if (pspgl_curctx->stats.enabled)
 		start = now();
@@ -101,6 +112,7 @@ static void sync_list(struct pspgl_dlist *list)
 
 		data->flags &= ~BF_PINNED;
 
+		PSPGL_PROFILE_INC(buffer_unpins);
 		__pspgl_buffer_free(data);
 	}
 
@@ -118,6 +130,8 @@ void dlist_finish (struct pspgl_dlist *d)
 	d->cmd_buf[d->len++] = 0x0c000000;	/* END */
 	d->cmd_buf[d->len++] = 0x00000000;	/* NOP */
 	d->cmd_buf[d->len++] = 0x00000000;	/* NOP */
+	PSPGL_PROFILE_ADD(command_words, DLIST_EXTRA);
+	PSPGL_PROFILE_MAX(command_list_high_water_words, d->len);
 }
 
 /* Submit all pending command lists to hardware, and move to the next
@@ -128,6 +142,7 @@ void __pspgl_dlist_submit(void)
 	struct pspgl_dlist *d = &dlists[dlist_current];
 
 	dlist_finish(d);
+	PSPGL_PROFILE_INC(command_list_submissions);
 	pspgl_dlist_dump(d->cmd_buf, d->len);
 
 	assert(d->qid == -1);
@@ -155,7 +170,9 @@ void __pspgl_dlist_pin_buffer(struct pspgl_buffer *data, unsigned flags)
 {
 	struct pspgl_dlist *d = &dlists[dlist_current];
 
+	PSPGL_PROFILE_INC(buffer_pin_requests);
 	if (data->pin_prevp != NULL) {
+		PSPGL_PROFILE_INC(buffer_pin_repeated);
 		/* pinned by someone; snip from whatever list its
 		   currently on */
 		if (data->pin_next)
@@ -163,6 +180,7 @@ void __pspgl_dlist_pin_buffer(struct pspgl_buffer *data, unsigned flags)
 		*(data->pin_prevp) = data->pin_next;
 	} else {
 		/* newly pinned */
+		PSPGL_PROFILE_INC(buffer_pin_new);
 		data->refcount++;
 	}
 	data->flags |= flags;
@@ -183,6 +201,7 @@ void __pspgl_dlist_await_completion (int (*pred)(void *), void *p)
 {
 	unsigned i;
 
+	PSPGL_PROFILE_INC(await_completion_calls);
 	i = dlist_current;
 
 	do {
@@ -213,8 +232,11 @@ void * __pspgl_dlist_insert_space (unsigned long size)
 	unsigned long adr;
 
 	size = ROUNDUP(size, sizeof(d->cmd_buf[0])) / sizeof(d->cmd_buf[0]);
+	PSPGL_PROFILE_INC(command_list_insert_space_calls);
+	PSPGL_PROFILE_ADD(command_list_insert_space_words, size + 2);
 
 	if ((d->len + 2 + size) >= (DLIST_SIZE - 4)) {
+		PSPGL_PROFILE_INC(command_list_insert_space_rollovers);
 		__pspgl_dlist_submit();
 		d = &dlists[dlist_current];
 
@@ -227,7 +249,8 @@ void * __pspgl_dlist_insert_space (unsigned long size)
 	adr = (unsigned long) &d->cmd_buf[d->len];
 	d->cmd_buf[len  ] = (CMD_BASE << 24) | ((adr >> 8) & 0xf0000);
 	d->cmd_buf[len+1] = (CMD_JUMP << 24) | (adr & 0xffffff);
+	PSPGL_PROFILE_ADD(command_words, 2);
+	PSPGL_PROFILE_MAX(command_list_high_water_words, d->len);
 
 	return (void *)&d->cmd_buf[len+2];
 }
-

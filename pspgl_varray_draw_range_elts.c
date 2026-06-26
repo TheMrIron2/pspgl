@@ -4,6 +4,7 @@
 #include "pspgl_internal.h"
 #include "pspgl_buffers.h"
 #include "pspgl_dlist.h"
+#include "pspgl_profile_internal.h"
 
 /* Find the min and max indices in an element array.  Expects indices
    to be a mapped pointer. */
@@ -91,9 +92,15 @@ void __pspgl_varray_draw_range_elts(GLenum mode, GLenum idx_type,
 	if (unlikely(prim < 0))
 		goto out_error;
 
-	if (unlikely(count == 0))
+	if (unlikely(count == 0)) {
+		PSPGL_PROFILE_INC(draw_zero_count_skips);
 		return;
+	}
 
+	PSPGL_PROFILE_INC(draw_calls);
+	PSPGL_PROFILE_INC(draw_range_elements_calls);
+	PSPGL_PROFILE_ADD(vertices_submitted, count);
+	PSPGL_PROFILE_ADD(indices_submitted, count);
 	vbuf = NULL;
 	vbuf_offset = 0;
 	idx_base = 0;
@@ -103,6 +110,7 @@ void __pspgl_varray_draw_range_elts(GLenum mode, GLenum idx_type,
 		/* FAST: directly usable locked arrays */
 		struct locked_arrays *l = &pspgl_curctx->vertex_array.locked;
 
+		PSPGL_PROFILE_INC(array_locked_fast_paths);
 		vbuf = l->cached_array;
 		vbuf_offset = l->cached_array_offset;
 		vfmtp = &l->vfmt;
@@ -134,6 +142,8 @@ void __pspgl_varray_draw_range_elts(GLenum mode, GLenum idx_type,
 		}
 
 		vbuf = __pspgl_varray_convert(&vfmt, minidx, maxidx-minidx+1);
+		PSPGL_PROFILE_INC(array_convert_paths);
+		PSPGL_PROFILE_INC(vertex_buffer_temp_allocations);
 		vbuf_offset = 0;
 		idx_base = minidx;
 

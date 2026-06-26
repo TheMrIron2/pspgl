@@ -3,6 +3,7 @@
 
 #include "pspgl_internal.h"
 #include "pspgl_texobj.h"
+#include "pspgl_profile_internal.h"
 
 /* 
    For compressed formats, convert the whole image; 
@@ -121,6 +122,9 @@ void glCompressedTexImage2D(GLenum target, GLint level,
 		return;		/* error already set */
 
 	__pspgl_set_texture_image(tobj, level, timg);
+	PSPGL_PROFILE_INC(texture_compressed_image_uploads);
+	PSPGL_PROFILE_INC(texture_memory_modifications);
+	PSPGL_PROFILE_ADD(texture_upload_bytes, imageSize);
 
 	__pspgl_update_texenv(tobj);
 	return;
