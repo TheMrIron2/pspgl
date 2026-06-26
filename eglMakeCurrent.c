@@ -63,10 +63,8 @@ EGLBoolean eglMakeCurrent (EGLDisplay dpy,
 		c->view_stack.flags |= MF_DIRTY;
 		for(int i = 0; i < NBONES; i++)
 			c->bone_stacks[i].flags |= MF_DIRTY;
-#if PSPGL_DIRTY_TEXTURE_FLUSH
-		__pspgl_mark_texture_cache_dirty(c);
-#endif
 	}
 
 	return __pspgl_vidmem_setup_write_and_display_buffer(c->draw);
 }
+

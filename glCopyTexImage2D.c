@@ -85,17 +85,12 @@ void glCopyTexImage2D(GLenum target,
 	PSPGL_PROFILE_INC(texture_copy_image_uploads);
 	PSPGL_PROFILE_INC(texture_memory_modifications);
 	PSPGL_PROFILE_ADD(texture_upload_bytes, width * height * timg->texfmt->hwsize);
-#if PSPGL_DIRTY_TEXTURE_FLUSH
-	__pspgl_mark_texture_cache_dirty(pspgl_curctx);
-#endif
 
 	__pspgl_dlist_pin_buffer(timg->image, BF_PINNED_WR);
 	__pspgl_dlist_pin_buffer(framebuffer, BF_PINNED_RD);
 
-#if !PSPGL_DIRTY_TEXTURE_FLUSH
 	sendCommandi(CMD_TEXCACHE_SYNC, getReg(CMD_TEXCACHE_SYNC)+1);
 	sendCommandi(CMD_TEXCACHE_FLUSH, getReg(CMD_TEXCACHE_FLUSH)+1);
-#endif
 
 	if (level == 0 && (tobj->flags & TOF_GENERATE_MIPMAPS))
 		__pspgl_update_mipmaps();

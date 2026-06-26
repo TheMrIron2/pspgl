@@ -13,9 +13,6 @@
 #include "pspgl_hash.h"
 #include "pspgl_misc.h"
 
-#ifndef PSPGL_DIRTY_TEXTURE_FLUSH
-#define PSPGL_DIRTY_TEXTURE_FLUSH 0
-#endif
 
 #define MAX_ATTRIB_STACK	16
 
@@ -111,9 +108,6 @@ struct pspgl_context {
 
 		uint32_t ge_reg [256];
 		uint32_t ge_reg_touched [256/32];
-#if PSPGL_DIRTY_TEXTURE_FLUSH
-		GLboolean texture_cache_dirty;
-#endif
 	} hw;
 
 	struct {
@@ -400,10 +394,6 @@ extern const GLfloat __pspgl_identity[];
 extern void __pspgl_context_writereg (struct pspgl_context *c, uint32_t cmd, uint32_t argi);
 extern void __pspgl_context_writereg_masked (struct pspgl_context *c, uint32_t cmd, uint32_t argi, uint32_t mask);
 extern void __pspgl_context_writereg_uncached (struct pspgl_context *c, uint32_t cmd, uint32_t argi);
-#if PSPGL_DIRTY_TEXTURE_FLUSH
-extern void __pspgl_mark_texture_cache_dirty(struct pspgl_context *c);
-extern void __pspgl_flush_dirty_texture_cache(struct pspgl_context *c);
-#endif
 
 extern void __pspgl_context_render_setup(struct pspgl_context *c, unsigned vtxfmt, 
 					 const void *vertex, const void *index);
@@ -494,3 +484,4 @@ extern void __pspglEnable(struct stDisplayElement *de);
 extern void __pspglTranslate(struct stDisplayElement *de);
 
 #endif
+

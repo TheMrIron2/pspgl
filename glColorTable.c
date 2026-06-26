@@ -47,9 +47,6 @@ void glColorTable(GLenum target, GLenum internalformat,
 	PSPGL_PROFILE_INC(texture_memory_modifications);
 	PSPGL_PROFILE_ADD(texture_upload_bytes, width * fmt->hwsize);
 	pspgl_curctx->hw.dirty |= HWD_CLUT;
-#if PSPGL_DIRTY_TEXTURE_FLUSH
-	__pspgl_mark_texture_cache_dirty(pspgl_curctx);
-#endif
 
 	__pspgl_update_texenv(tobj);
 

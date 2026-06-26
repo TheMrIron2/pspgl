@@ -100,31 +100,6 @@ void __pspgl_context_writereg_uncached (struct pspgl_context *c, uint32_t cmd, u
 	__pspgl_dlist_enqueue_cmd(val);
 }
 
-#if PSPGL_DIRTY_TEXTURE_FLUSH
-void __pspgl_mark_texture_cache_dirty(struct pspgl_context *c)
-{
-	if (!c->hw.texture_cache_dirty) {
-		c->hw.texture_cache_dirty = GL_TRUE;
-		PSPGL_PROFILE_INC(texture_cache_dirty_marks);
-	} else {
-		PSPGL_PROFILE_INC(texture_cache_dirty_mark_coalesced);
-	}
-}
-
-void __pspgl_flush_dirty_texture_cache(struct pspgl_context *c)
-{
-	if (!c->hw.texture_cache_dirty)
-		return;
-
-	__pspgl_context_writereg_uncached(c, CMD_TEXCACHE_SYNC,
-					  (c->hw.ge_reg[CMD_TEXCACHE_SYNC] + 1) & 0xffffff);
-	__pspgl_context_writereg_uncached(c, CMD_TEXCACHE_FLUSH,
-					  (c->hw.ge_reg[CMD_TEXCACHE_FLUSH] + 1) & 0xffffff);
-	c->hw.texture_cache_dirty = GL_FALSE;
-	PSPGL_PROFILE_INC(texture_cache_dirty_flushes);
-}
-#endif
-
 
 /* write a uncached matrix register */
 static inline
@@ -380,14 +355,6 @@ void __pspgl_context_render_setup(struct pspgl_context *c, unsigned vtxfmt,
 		flush_pending_matrix_changes(c);
 
 	__pspgl_context_flush_pending_state_changes(c, 0, 255);
-
-#if PSPGL_DIRTY_TEXTURE_FLUSH
-	if ((tobj != NULL) &&
-	    (c->hw.ge_reg[CMD_ENA_TEXTURE] & 1)) {
-		PSPGL_PROFILE_INC(texture_cache_dirty_textured_draw_checks);
-		__pspgl_flush_dirty_texture_cache(c);
-	}
-#endif
 
 	if (clut_load != 0)
 		__pspgl_context_writereg_uncached(c, CMD_CLUT_LOAD, clut_load);

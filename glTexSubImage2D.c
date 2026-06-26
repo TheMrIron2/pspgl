@@ -141,9 +141,6 @@ void glTexSubImage2D( GLenum target, GLint level,
 	PSPGL_PROFILE_INC(texture_sub_image_uploads);
 	PSPGL_PROFILE_INC(texture_memory_modifications);
 	PSPGL_PROFILE_ADD(texture_upload_bytes, width * height * texfmt->hwsize);
-#if PSPGL_DIRTY_TEXTURE_FLUSH
-	__pspgl_mark_texture_cache_dirty(pspgl_curctx);
-#endif
 
 	if (level == 0 && (tobj->flags & TOF_GENERATE_MIPMAPS))
 		__pspgl_update_mipmaps();

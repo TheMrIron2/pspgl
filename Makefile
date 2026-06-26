@@ -7,12 +7,11 @@ AR = $(ARCH)ar
 RANLIB = $(ARCH)ranlib
 RM = rm -f
 PSPGL_PROFILE ?= 0
-PSPGL_DIRTY_TEXTURE_FLUSH ?= 0
-CFLAGS = -g -Wall -Wmissing-prototypes -Os -G0 -fsingle-precision-constant -DPSPGL_PROFILE=$(PSPGL_PROFILE) -DPSPGL_DIRTY_TEXTURE_FLUSH=$(PSPGL_DIRTY_TEXTURE_FLUSH) -I. -I $(PSPPATH)/include -I $(PSPSDK)/include
+CFLAGS = -g -Wall -Wmissing-prototypes -Os -G0 -fsingle-precision-constant -DPSPGL_PROFILE=$(PSPGL_PROFILE) -I. -I $(PSPPATH)/include -I $(PSPSDK)/include
 LFLAGS = -g -Wall -Os -G0 -L$(PSPPATH)/lib
 
 DEPDIR = .deps
-PSPGL_CONFIG_STAMP = $(DEPDIR)/config-profile-$(PSPGL_PROFILE)-dirtytex-$(PSPGL_DIRTY_TEXTURE_FLUSH).stamp
+PSPGL_PROFILE_STAMP = $(DEPDIR)/profile-$(PSPGL_PROFILE).stamp
 
 API_OBJS = \
 	eglBindTexImage.o \
@@ -204,11 +203,11 @@ pspgl_proctable.h: $(API_OBJS) Makefile
 $(DEPDIR):
 	mkdir $(DEPDIR)
 
-$(libGL.a_OBJS) $(libGLU.a_OBJS) $(libglut.a_OBJS): $(PSPGL_CONFIG_STAMP)
+$(libGL.a_OBJS) $(libGLU.a_OBJS) $(libglut.a_OBJS): $(PSPGL_PROFILE_STAMP)
 
-$(PSPGL_CONFIG_STAMP): | $(DEPDIR)
-	$(RM) $(DEPDIR)/config-*.stamp $(DEPDIR)/profile-*.stamp
-	printf 'PSPGL_PROFILE=%s\nPSPGL_DIRTY_TEXTURE_FLUSH=%s\n' "$(PSPGL_PROFILE)" "$(PSPGL_DIRTY_TEXTURE_FLUSH)" > $@
+$(PSPGL_PROFILE_STAMP): | $(DEPDIR)
+	$(RM) $(DEPDIR)/profile-*.stamp
+	echo "$(PSPGL_PROFILE)" > $@
 
 .c.o:
 	$(CC) $(CFLAGS) -MD -MF $(DEPDIR)/$*.d -c $<
