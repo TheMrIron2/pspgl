@@ -4,6 +4,7 @@
 #include "pspgl_internal.h"
 #include "pspgl_texobj.h"
 #include "pspgl_matrix.h"
+#include "pspgl_profile_internal.h"
 
 struct pspgl_saved_attrib
 {
@@ -472,9 +473,13 @@ void glPopAttrib( void )
 			__pspgl_texobj_free(c->texture.bound);
 		c->texture.bound = a->texture.bound;
 
+#if PSPGL_DIRTY_TEXTURE_FLUSH
+		PSPGL_PROFILE_INC(texture_state_restore_flushes_suppressed);
+#else
 		/* make sure texture cache is flushed */
 		__pspgl_context_writereg(c, CMD_TEXCACHE_FLUSH,
 					 a->regs[CMD_TEXCACHE_FLUSH]+1);
+#endif
 
 		c->hw.dirty |= HWD_CLUT;
 	}

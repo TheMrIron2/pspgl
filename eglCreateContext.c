@@ -61,6 +61,9 @@ EGLContext eglCreateContext (EGLDisplay dpy, EGLConfig config, EGLContext share_
 	__pspgl_matrix_select(ctx, &ctx->modelview_stack);
 
 	ctx->vertexblend.enabled = GL_FALSE;
+#if PSPGL_DIRTY_TEXTURE_FLUSH
+	ctx->hw.texture_cache_dirty = GL_TRUE;
+#endif
 
 	if (share_context == NULL) {
 		ctx->shared = malloc(sizeof(struct pspgl_shared_context));
@@ -94,5 +97,4 @@ EGLContext eglCreateContext (EGLDisplay dpy, EGLConfig config, EGLContext share_
 	EGLERROR(EGL_BAD_ALLOC);
 	return EGL_NO_CONTEXT;
 }
-
 

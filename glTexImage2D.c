@@ -219,7 +219,11 @@ void __pspgl_update_mipmaps(void)
 		w = tw;
 		h = th;
 		set_mipmap_regs(0, timg);
+#if PSPGL_DIRTY_TEXTURE_FLUSH
+		__pspgl_mark_texture_cache_dirty(pspgl_curctx);
+#else
 		sendCommandi(CMD_TEXCACHE_FLUSH, getReg(CMD_TEXCACHE_FLUSH)+1);
+#endif
 	}
 
 	/* all the appropriate texture images have a reference now */
@@ -299,7 +303,12 @@ void __pspgl_set_texture_image(struct pspgl_texobj *tobj, unsigned level,
 		sendCommandi(CMD_TEXMODE, (maxlvl << 16) | (0 << 8) | swizzled);
 	}
 
+#if PSPGL_DIRTY_TEXTURE_FLUSH
+	if (timg)
+		__pspgl_mark_texture_cache_dirty(pspgl_curctx);
+#else
 	sendCommandi(CMD_TEXCACHE_FLUSH, getReg(CMD_TEXCACHE_FLUSH)+1);
+#endif
 }
 
 #if 0

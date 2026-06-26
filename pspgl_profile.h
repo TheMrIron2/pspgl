@@ -10,6 +10,12 @@ struct pspgl_profile_stats {
 	unsigned long long texture_cache_flush_commands;
 	unsigned long long texture_cache_sync_requests;
 	unsigned long long texture_cache_sync_commands;
+	unsigned long long texture_cache_dirty_marks;
+	unsigned long long texture_cache_dirty_mark_coalesced;
+	unsigned long long texture_cache_dirty_flushes;
+	unsigned long long texture_bind_flushes_suppressed;
+	unsigned long long texture_state_restore_flushes_suppressed;
+	unsigned long long texture_cache_dirty_textured_draw_checks;
 	unsigned long long texture_image_uploads;
 	unsigned long long texture_compressed_image_uploads;
 	unsigned long long texture_sub_image_uploads;

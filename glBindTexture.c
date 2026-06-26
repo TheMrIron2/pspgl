@@ -67,7 +67,11 @@ void glBindTexture(GLenum target, GLuint id)
 		pspgl_curctx->hw.dirty |= HWD_CLUT;
 
 	__pspgl_update_texenv(tobj);
+#if PSPGL_DIRTY_TEXTURE_FLUSH
+	PSPGL_PROFILE_INC(texture_bind_flushes_suppressed);
+#else
 	sendCommandi(CMD_TEXCACHE_FLUSH, getReg(CMD_TEXCACHE_FLUSH)+1);
+#endif
 	return;
 
   out_error:
