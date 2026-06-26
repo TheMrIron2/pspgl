@@ -1,0 +1,4 @@
+*.o
+*.a
+.deps/
+pspgl_proctable.h
