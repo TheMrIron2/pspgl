@@ -10,7 +10,14 @@ struct pspgl_profile_stats __pspgl_profile_stats;
 void pspgl_profile_reset(void)
 {
 #if PSPGL_PROFILE
+	unsigned current = __pspgl_dlist_outstanding_current();
+
 	memset(&__pspgl_profile_stats, 0, sizeof(__pspgl_profile_stats));
+
+	__pspgl_profile_stats.command_list_outstanding_current =
+		(unsigned long long)current;
+	__pspgl_profile_stats.command_list_outstanding_high_water =
+		(unsigned long long)current;
 #endif
 }
 

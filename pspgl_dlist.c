@@ -204,7 +204,7 @@ void __pspgl_dlist_submit(void)
 
 	psp_log("queueing %d commands", d->len);
 	d->qid = sceGeListEnQueue(d->cmd_buf, &d->cmd_buf[d->len-1], 0, NULL);
-	if (d->qid != -1)
+	if (d->qid >= 0)
 		profile_dlist_enqueued();
 
 	/* move to next command queue */
