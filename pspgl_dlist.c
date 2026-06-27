@@ -12,8 +12,16 @@
 
 #define NUM_CMDLISTS	16u
 
-#define DLIST_SIZE	512	/* command words (32bit) */
+#ifndef PSPGL_DLIST_SIZE_WORDS
+#define PSPGL_DLIST_SIZE_WORDS 512
+#endif
+
 #define DLIST_EXTRA	4	/* 4 commands of overhead at the end */
+#if PSPGL_DLIST_SIZE_WORDS <= (DLIST_EXTRA + 2)
+#error "PSPGL_DLIST_SIZE_WORDS is too small for command-list termination and insertion commands"
+#endif
+
+#define DLIST_SIZE	PSPGL_DLIST_SIZE_WORDS	/* command words (32bit) */
 
 #define DLIST_CACHED	0	/* put command list in cached memory */
 
@@ -37,6 +45,30 @@ static int dlist_needinit = 1;
 static struct pspgl_dlist dlists[NUM_CMDLISTS]
 	__attribute__((aligned(CACHELINE_SIZE)));
 static unsigned dlist_current;
+#if PSPGL_PROFILE
+static unsigned dlist_outstanding_current;
+#endif
+
+static void profile_dlist_enqueued(void)
+{
+#if PSPGL_PROFILE
+	dlist_outstanding_current++;
+	PSPGL_PROFILE_SET(command_list_outstanding_current,
+			  dlist_outstanding_current);
+	PSPGL_PROFILE_MAX(command_list_outstanding_high_water,
+			  dlist_outstanding_current);
+#endif
+}
+
+static void profile_dlist_reclaimed(void)
+{
+#if PSPGL_PROFILE
+	if (dlist_outstanding_current != 0)
+		dlist_outstanding_current--;
+	PSPGL_PROFILE_SET(command_list_outstanding_current,
+			  dlist_outstanding_current);
+#endif
+}
 
 static void dlist_reset (struct pspgl_dlist *d)
 {
@@ -52,6 +84,9 @@ void __pspgl_dlist_init(void)
 	dlist_needinit = 0;
 
 	dlist_current = 0;
+#if PSPGL_PROFILE
+	dlist_outstanding_current = 0;
+#endif
 	for(int i = 0; i < NUM_CMDLISTS; i++) {
 		struct pspgl_dlist *d = &dlists[i];
 
@@ -65,6 +100,15 @@ void __pspgl_dlist_init(void)
 unsigned __pspgl_dlist_capacity_words(void)
 {
 	return DLIST_SIZE;
+}
+
+unsigned __pspgl_dlist_outstanding_current(void)
+{
+#if PSPGL_PROFILE
+	return dlist_outstanding_current;
+#else
+	return 0;
+#endif
 }
 
 void __pspgl_dlist_enqueue_cmd (unsigned long cmd)
@@ -120,6 +164,7 @@ static void sync_list(struct pspgl_dlist *list)
 		__pspgl_buffer_free(data);
 	}
 
+	profile_dlist_reclaimed();
 	dlist_reset(list);
 }
 
@@ -144,6 +189,7 @@ void dlist_finish (struct pspgl_dlist *d)
 void __pspgl_dlist_submit(void)
 {
 	struct pspgl_dlist *d = &dlists[dlist_current];
+	unsigned next;
 
 	dlist_finish(d);
 	PSPGL_PROFILE_INC(command_list_submissions);
@@ -158,12 +204,30 @@ void __pspgl_dlist_submit(void)
 
 	psp_log("queueing %d commands", d->len);
 	d->qid = sceGeListEnQueue(d->cmd_buf, &d->cmd_buf[d->len-1], 0, NULL);
+	if (d->qid != -1)
+		profile_dlist_enqueued();
 
 	/* move to next command queue */
-	dlist_current = (dlist_current + 1) % NUM_CMDLISTS;
+	next = (dlist_current + 1) % NUM_CMDLISTS;
+	if (next == 0)
+		PSPGL_PROFILE_INC(command_list_pool_wraps);
+	dlist_current = next;
 	d = &dlists[dlist_current];
-	if (d->qid != -1)
+	if (d->qid != -1) {
+#if PSPGL_PROFILE
+		unsigned long long start, elapsed_us;
+#endif
+		PSPGL_PROFILE_INC(command_list_reuse_syncs);
+#if PSPGL_PROFILE
+		start = now();
+#endif
 		sync_list(d);
+#if PSPGL_PROFILE
+		elapsed_us = __pspgl_ticks_to_us(now() - start);
+		PSPGL_PROFILE_ADD(command_list_reuse_sync_wait_us, elapsed_us);
+		PSPGL_PROFILE_MAX(command_list_reuse_sync_wait_max_us, elapsed_us);
+#endif
+	}
 }
 
 

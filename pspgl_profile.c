@@ -23,6 +23,12 @@ void pspgl_profile_snapshot(struct pspgl_profile_stats *out)
 	*out = __pspgl_profile_stats;
 	out->command_list_capacity_words =
 		(unsigned long long)__pspgl_dlist_capacity_words();
+	out->command_list_outstanding_current =
+		(unsigned long long)__pspgl_dlist_outstanding_current();
+	if (out->command_list_outstanding_high_water <
+	    out->command_list_outstanding_current)
+		out->command_list_outstanding_high_water =
+			out->command_list_outstanding_current;
 #else
 	memset(out, 0, sizeof(*out));
 #endif

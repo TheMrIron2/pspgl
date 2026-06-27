@@ -7,11 +7,12 @@ AR = $(ARCH)ar
 RANLIB = $(ARCH)ranlib
 RM = rm -f
 PSPGL_PROFILE ?= 0
-CFLAGS = -g -Wall -Wmissing-prototypes -Os -G0 -fsingle-precision-constant -DPSPGL_PROFILE=$(PSPGL_PROFILE) -I. -I $(PSPPATH)/include -I $(PSPSDK)/include
+PSPGL_DLIST_SIZE_WORDS ?= 512
+CFLAGS = -g -Wall -Wmissing-prototypes -Os -G0 -fsingle-precision-constant -DPSPGL_PROFILE=$(PSPGL_PROFILE) -DPSPGL_DLIST_SIZE_WORDS=$(PSPGL_DLIST_SIZE_WORDS) -I. -I $(PSPPATH)/include -I $(PSPSDK)/include
 LFLAGS = -g -Wall -Os -G0 -L$(PSPPATH)/lib
 
 DEPDIR = .deps
-PSPGL_PROFILE_STAMP = $(DEPDIR)/profile-$(PSPGL_PROFILE).stamp
+PSPGL_CONFIG_STAMP = $(DEPDIR)/config-profile-$(PSPGL_PROFILE)-dlist-$(PSPGL_DLIST_SIZE_WORDS).stamp
 
 API_OBJS = \
 	eglBindTexImage.o \
@@ -203,11 +204,12 @@ pspgl_proctable.h: $(API_OBJS) Makefile
 $(DEPDIR):
 	mkdir $(DEPDIR)
 
-$(libGL.a_OBJS) $(libGLU.a_OBJS) $(libglut.a_OBJS): $(PSPGL_PROFILE_STAMP)
+$(libGL.a_OBJS) $(libGLU.a_OBJS) $(libglut.a_OBJS): $(PSPGL_CONFIG_STAMP)
 
-$(PSPGL_PROFILE_STAMP): | $(DEPDIR)
-	$(RM) $(DEPDIR)/profile-*.stamp
-	echo "$(PSPGL_PROFILE)" > $@
+$(PSPGL_CONFIG_STAMP): | $(DEPDIR)
+	$(RM) $(DEPDIR)/config-*.stamp $(DEPDIR)/profile-*.stamp
+	echo "PSPGL_PROFILE=$(PSPGL_PROFILE)" > $@
+	echo "PSPGL_DLIST_SIZE_WORDS=$(PSPGL_DLIST_SIZE_WORDS)" >> $@
 
 .c.o:
 	$(CC) $(CFLAGS) -MD -MF $(DEPDIR)/$*.d -c $<

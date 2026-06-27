@@ -64,6 +64,12 @@ struct pspgl_profile_stats {
 	unsigned long long command_list_rollovers;
 	unsigned long long command_list_high_water_words;
 	unsigned long long command_list_capacity_words;
+	unsigned long long command_list_pool_wraps;
+	unsigned long long command_list_outstanding_current;
+	unsigned long long command_list_outstanding_high_water;
+	unsigned long long command_list_reuse_syncs;
+	unsigned long long command_list_reuse_sync_wait_us;
+	unsigned long long command_list_reuse_sync_wait_max_us;
 	unsigned long long command_list_insert_space_calls;
 	unsigned long long command_list_insert_space_words;
 	unsigned long long command_list_insert_space_rollovers;
