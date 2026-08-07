@@ -247,6 +247,7 @@ GLAPI EGLBoolean APIENTRY eglQueryContext (EGLDisplay dpy, EGLContext ctx, EGLin
 GLAPI EGLBoolean APIENTRY eglWaitGL (void);
 GLAPI EGLBoolean APIENTRY eglWaitNative (EGLint engine);
 GLAPI EGLBoolean APIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface draw);
+GLAPI void *APIENTRY eglGetPresentedFrameBufferPSP(EGLSurface draw, EGLint *stride, EGLint *pixelFormat);
 GLAPI EGLBoolean APIENTRY eglCopyBuffers (EGLDisplay dpy, EGLSurface surface, NativePixmapType target);
 
 #ifdef __cplusplus
