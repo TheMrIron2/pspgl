@@ -84,7 +84,7 @@ for (unsigned i = first; i < last; i += 32) {
 /**
  *  trigger some real action
  */
-void __pspgl_context_writereg_uncached (struct pspgl_context *c, uint32_t cmd, uint32_t argi) 
+void __pspgl_context_writereg_uncached (struct pspgl_context *c, uint32_t cmd, uint32_t argi)
 {
 	uint32_t val = ((cmd) << 24) | ((argi) & 0xffffff);
 
@@ -292,6 +292,8 @@ void __pspgl_context_render_setup(struct pspgl_context *c, unsigned vtxfmt,
 			struct pspgl_matrix_stack *tm = &c->texture_stack;
 			float su = 1.f, sv = 1.f;
 			float tu = 0.f, tv = 0.f;
+			int adjust;
+			int changed;
 
 			switch(vtxfmt & GE_TEXTURE_SHIFT(3)) {
 			case GE_TEXTURE_8BIT:
@@ -310,8 +312,18 @@ void __pspgl_context_render_setup(struct pspgl_context *c, unsigned vtxfmt,
 				tv = 1.f;
 			}
 
+			adjust = (su != 1 || sv != 1 || tu != 0 || tv != 0);
+			changed = ((tm->flags & MF_ADJUST) != (adjust ? MF_ADJUST : 0));
+			if (adjust && !changed) {
+				changed = (tm->scale[0] != su) || (tm->scale[1] != sv) ||
+					  (tm->scale[2] != 1.f) || (tm->trans[0] != tu) ||
+					  (tm->trans[1] != tv) || (tm->trans[2] != 0.f);
+			}
+			if (changed)
+				tm->flags |= MF_DIRTY;
+
 			tm->flags &= ~MF_ADJUST;
-			if (su != 1 || sv != 1 || tu != 0 || tv != 0) {
+			if (adjust) {
 				tm->flags |= MF_ADJUST;
 				tm->scale[0] = su;
 				tm->scale[1] = sv;

@@ -484,4 +484,3 @@ extern void __pspglEnable(struct stDisplayElement *de);
 extern void __pspglTranslate(struct stDisplayElement *de);
 
 #endif
-
